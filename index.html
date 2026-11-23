@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Home Hub</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+<style>
+  :root {
+    --bg: #0f1115; --card: #181b22; --card-hover: #1f232c; --border: #2a2f3a;
+    --text: #e8eaf0; --muted: #8b93a7; --accent: #6ea8fe; --accent-2: #3ddc97;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f5f6f8; --card: #fff; --card-hover: #f0f3f8; --border: #dde1e8;
+            --text: #1b1f27; --muted: #5d6576; --accent: #2563eb; --accent-2: #0f9d63; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+         background: var(--bg); color: var(--text); }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  h1 { font-size: 1.5rem; margin: 0; }
+  h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 28px 0 10px; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; width: 100%; }
+  input[type=search] { flex: 1 1 220px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+         background: var(--card); color: var(--text); font-size: 1rem; }
+  .toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .toggle button { background: var(--card); color: var(--muted); border: 0; padding: 10px 14px; font-size: .9rem; cursor: pointer; }
+  .toggle button.on { background: var(--accent); color: #fff; }
+  .hint { color: var(--muted); font-size: .85rem; margin: 6px 0 0; width: 100%; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .card { position: relative; display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 14px;
+          background: var(--card); border: 1px solid var(--border); text-decoration: none; color: inherit;
+          transition: background .15s, transform .15s; }
+  .card:hover { background: var(--card-hover); transform: translateY(-1px); }
+  .icon { font-size: 1.8rem; line-height: 1; width: 2.2rem; text-align: center; flex: none; }
+  .name { font-weight: 600; }
+  .desc { color: var(--muted); font-size: .88rem; }
+  .addr { color: var(--accent); font-size: .78rem; font-family: ui-monospace, Consolas, monospace; margin-top: 4px; word-break: break-all; }
+  .alt { font-size: .78rem; margin-top: 2px; }
+  .alt a { color: var(--muted); }
+  footer { margin-top: 40px; color: var(--muted); font-size: .8rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>🏠 Home Hub</h1>
+    <div class="controls">
+      <input type="search" id="q" placeholder="Search apps…" autofocus>
+      <div class="toggle" role="group" aria-label="How to connect">
+        <button data-mode="tailscale">Tailscale</button>
+        <button data-mode="lan">Home Wi-Fi</button>
+      </div>
+      <p class="hint" id="hint"></p>
+    </div>
+  </header>
+  <div id="list"></div>
+  <footer>
+    To add or change an app, edit the <code>APPS</code> list near the bottom of <code>index.html</code>.
+    Every bookmark points to this one page, so you only update it here.
+  </footer>
+</main>
+
+<script>
+/* ===================== EDIT YOUR APPS HERE =====================
+   Each machine has a Tailscale name (works anywhere Tailscale is on)
+   and a home LAN IP (works only on home Wi-Fi). */
+const MACHINES = {
+  lenovo:  { ts: "minipc-lenovo.tail818bb3.ts.net", lan: "192.168.1.175" }, // Lenovo mini PC
+  beelink: { ts: "mini-bee.tail818bb3.ts.net",      lan: "192.168.1.200" }, // Beelink mini PC
+};
+
+const APPS = [
+  // group, icon, name, description, machine (from MACHINES) or lan-only host, port, path
+  { group: "My Apps", icon: "🕹️", name: "BernaCade",  desc: "BernaCade remote (Lenovo)",        machine: "lenovo",  port: 5050, path: "/" },
+  { group: "My Apps", icon: "🧊", name: "BernaForge 3D", desc: "3D Forge & Blueprint AI (Lenovo)", machine: "lenovo",  port: 5080, path: "/" },
+  { group: "My Apps", icon: "🏋️", name: "Apollo OS",  desc: "Garage fitness terminal (Lenovo)",  machine: "lenovo",  port: 5000, path: "/" },
+  { group: "My Apps", icon: "🏋️", name: "Apollo OS (Beelink)", desc: "Garage fitness terminal (Beelink)", machine: "beelink", port: 5000, path: "/" },
+
+  { group: "Media",   icon: "🎬", name: "Plex",       desc: "Plex Media Server (Beelink)",       machine: "beelink", port: 32400, path: "/web/" },
+  { group: "Media",   icon: "📺", name: "HDHomeRun",  desc: "TV tuner",                          lan: "192.168.1.152" },
+
+  { group: "Network & Devices", icon: "📡", name: "Fios Router",   desc: "Router admin",        lan: "192.168.1.1" },
+  { group: "Network & Devices", icon: "📶", name: "Fios Extender", desc: "Wi-Fi extender",      lan: "192.168.1.100" },
+  { group: "Network & Devices", icon: "🖨️", name: "Epson Printer", desc: "Printer web panel",   lan: "192.168.1.169" },
+  { group: "Network & Devices", icon: "🧠", name: "Ollama",        desc: "Shared LLM server API (Beelink)", machine: "beelink", port: 11434, path: "/" },
+];
+/* =============================================================== */
+
+function url(host, a) {
+  return "http://" + host + (a.port ? ":" + a.port : "") + (a.path || "/");
+}
+function links(a) {
+  const m = a.machine && MACHINES[a.machine];
+  const lan = url(m ? m.lan : a.lan, a);
+  const ts = m ? url(m.ts, a) : null;
+  return { lan, ts };
+}
+
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+               set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+let mode = store.get("hub-mode") || "tailscale";
+
+function render() {
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const out = document.getElementById("list");
+  out.innerHTML = "";
+  const groups = {};
+  for (const a of APPS) {
+    if (q && !(a.name + " " + a.desc).toLowerCase().includes(q)) continue;
+    (groups[a.group] ||= []).push(a);
+  }
+  for (const [g, apps] of Object.entries(groups)) {
+    const h = document.createElement("h2"); h.textContent = g; out.appendChild(h);
+    const grid = document.createElement("div"); grid.className = "grid";
+    for (const a of apps) {
+      const { lan, ts } = links(a);
+      const primary = mode === "tailscale" && ts ? ts : lan;
+      const other = primary === ts ? lan : ts;
+      const card = document.createElement("a");
+      card.className = "card"; card.href = primary;
+      card.innerHTML = `<div class="icon"></div><div><div class="name"></div><div class="desc"></div><div class="addr"></div></div>`;
+      card.querySelector(".icon").textContent = a.icon;
+      card.querySelector(".name").textContent = a.name;
+      card.querySelector(".desc").textContent = a.desc + (ts ? "" : " · home Wi-Fi only");
+      card.querySelector(".addr").textContent = primary.replace(/^http:\/\//, "").replace(/\/$/, "");
+      if (other) {
+        const alt = document.createElement("div"); alt.className = "alt";
+        const l = document.createElement("a"); l.href = other;
+        l.textContent = other === ts ? "via Tailscale" : "via home Wi-Fi";
+        l.addEventListener("click", e => e.stopPropagation());
+        alt.appendChild(l); card.lastElementChild.appendChild(alt);
+      }
+      grid.appendChild(card);
+    }
+    out.appendChild(grid);
+  }
+  document.querySelectorAll(".toggle button").forEach(b => b.classList.toggle("on", b.dataset.mode === mode));
+  document.getElementById("hint").textContent = mode === "tailscale"
+    ? "Tailscale names work from anywhere (home or away) on any device with Tailscale turned on."
+    : "Home Wi-Fi addresses work only when you're on your home network, no Tailscale needed.";
+}
+
+document.getElementById("q").addEventListener("input", render);
+document.getElementById("q").addEventListener("keydown", e => {
+  if (e.key === "Enter") { const first = document.querySelector(".card"); if (first) location.href = first.href; }
+});
+document.querySelectorAll(".toggle button").forEach(b => b.addEventListener("click", () => {
+  mode = b.dataset.mode; store.set("hub-mode", mode); render();
+}));
+render();
+</script>
+</body>
+</html>
