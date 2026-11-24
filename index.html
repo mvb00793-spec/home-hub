@@ -42,9 +42,12 @@
   .icon { font-size: 1.8rem; line-height: 1; width: 2.2rem; text-align: center; flex: none; }
   .name { font-weight: 600; }
   .desc { color: var(--muted); font-size: .88rem; }
-  .addr { color: var(--accent); font-size: .78rem; font-family: ui-monospace, Consolas, monospace; margin-top: 4px; word-break: break-all; }
   .alt { font-size: .78rem; margin-top: 2px; }
   .alt a { color: var(--muted); }
+  .card.multi:hover { transform: none; }
+  .go { display: inline-block; color: var(--accent); font-size: .85rem; font-weight: 600; text-decoration: none; }
+  .go:hover { text-decoration: underline; }
+  .target + .target { margin-top: 8px; }
   footer { margin-top: 40px; color: var(--muted); font-size: .8rem; }
 </style>
 </head>
@@ -80,11 +83,17 @@ const MACHINES = {
 const APPS = [
   // group, icon, name, description, machine (from MACHINES) or lan-only host, port, path
   // optional https: full Tailscale Serve URL to use instead of the plain http Tailscale link
-  { group: "My Apps", icon: "🕹️", name: "BernaCade",  desc: "BernaCade remote (Lenovo)",        machine: "lenovo",  port: 5050, path: "/",
-    https: "https://minipc-lenovo.tail818bb3.ts.net/" }, // Tailscale Serve (real cert, installable as an app)
+  // optional links: several labelled links on one card, each with its own machine/port/path/https
+  { group: "My Apps", icon: "🕹️", name: "BernaCade",  desc: "Arcade cabinet (Lenovo)", links: [
+    // Tailscale Serve (real cert, installable as an app)
+    { label: "Phone remote", machine: "lenovo", port: 5050, path: "/remote/", https: "https://minipc-lenovo.tail818bb3.ts.net/remote/" },
+    { label: "Cabinet desktop", machine: "lenovo", port: 5050, path: "/" },
+  ] },
   { group: "My Apps", icon: "🧊", name: "BernaForge 3D", desc: "3D Forge & Blueprint AI (Lenovo)", machine: "lenovo",  port: 5080, path: "/" },
-  { group: "My Apps", icon: "🏋️", name: "Apollo OS",  desc: "Garage fitness terminal (Lenovo)",  machine: "lenovo",  port: 5000, path: "/" },
-  { group: "My Apps", icon: "🏋️", name: "Apollo OS (Beelink)", desc: "Garage fitness terminal (Beelink)", machine: "beelink", port: 5000, path: "/" },
+  { group: "My Apps", icon: "🏋️", name: "Apollo OS",  desc: "Garage fitness terminal", links: [
+    { label: "On the Lenovo",  machine: "lenovo",  port: 5000, path: "/" },
+    { label: "On the Beelink", machine: "beelink", port: 5000, path: "/" },
+  ] },
 
   { group: "Media",   icon: "🎬", name: "Plex",       desc: "Plex Media Server (Beelink)",       machine: "beelink", port: 32400, path: "/web/" },
   { group: "Media",   icon: "📺", name: "HDHomeRun",  desc: "TV tuner",                          lan: "192.168.1.152" },
@@ -123,23 +132,33 @@ function render() {
     const h = document.createElement("h2"); h.textContent = g; out.appendChild(h);
     const grid = document.createElement("div"); grid.className = "grid";
     for (const a of apps) {
-      const { lan, ts } = links(a);
-      const primary = mode === "tailscale" && ts ? ts : lan;
-      const other = primary === ts ? lan : ts;
-      const card = document.createElement("a");
-      card.className = "card"; card.href = primary;
-      card.innerHTML = `<div class="icon"></div><div><div class="name"></div><div class="desc"></div><div class="addr"></div></div>`;
+      const targets = a.links || [{ label: "Open here", ...a }];
+      const multi = targets.length > 1;
+      const card = document.createElement(multi ? "div" : "a");
+      card.className = "card" + (multi ? " multi" : "");
+      card.innerHTML = `<div class="icon"></div><div class="body"><div class="name"></div><div class="desc"></div></div>`;
       card.querySelector(".icon").textContent = a.icon;
       card.querySelector(".name").textContent = a.name;
-      card.querySelector(".desc").textContent = a.desc + (ts ? "" : " · home Wi-Fi only");
-      card.querySelector(".addr").textContent = "Open here →";
-      card.title = primary; // full address still shows on hover / long-press
-      if (other) {
-        const alt = document.createElement("div"); alt.className = "alt";
-        const l = document.createElement("a"); l.href = other;
-        l.textContent = other === ts ? "via Tailscale" : "via home Wi-Fi";
-        l.addEventListener("click", e => e.stopPropagation());
-        alt.appendChild(l); card.lastElementChild.appendChild(alt);
+      const body = card.querySelector(".body");
+      const anyTs = targets.some(t => links(t).ts);
+      card.querySelector(".desc").textContent = a.desc + (anyTs ? "" : " · home Wi-Fi only");
+      for (const t of targets) {
+        const { lan, ts } = links(t);
+        const primary = mode === "tailscale" && ts ? ts : lan;
+        const other = primary === ts ? lan : ts;
+        const row = document.createElement("div"); row.className = "target";
+        const go = document.createElement(multi ? "a" : "span");
+        go.className = "go"; go.textContent = t.label + " →"; go.title = primary;
+        if (multi) go.href = primary; else { card.href = primary; card.title = primary; }
+        row.appendChild(go);
+        if (other) {
+          const alt = document.createElement("div"); alt.className = "alt";
+          const l = document.createElement("a"); l.href = other; l.title = other;
+          l.textContent = other === ts ? "via Tailscale" : "via home Wi-Fi";
+          l.addEventListener("click", e => e.stopPropagation());
+          alt.appendChild(l); row.appendChild(alt);
+        }
+        body.appendChild(row);
       }
       grid.appendChild(card);
     }
@@ -153,7 +172,7 @@ function render() {
 
 document.getElementById("q").addEventListener("input", render);
 document.getElementById("q").addEventListener("keydown", e => {
-  if (e.key === "Enter") { const first = document.querySelector(".card"); if (first) location.href = first.href; }
+  if (e.key === "Enter") { const first = document.querySelector("a.card, .card a.go"); if (first) location.href = first.href; }
 });
 document.querySelectorAll(".toggle button").forEach(b => b.addEventListener("click", () => {
   mode = b.dataset.mode; store.set("hub-mode", mode); render();
