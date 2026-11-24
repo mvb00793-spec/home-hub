@@ -74,7 +74,9 @@ const MACHINES = {
 
 const APPS = [
   // group, icon, name, description, machine (from MACHINES) or lan-only host, port, path
-  { group: "My Apps", icon: "🕹️", name: "BernaCade",  desc: "BernaCade remote (Lenovo)",        machine: "lenovo",  port: 5050, path: "/" },
+  // optional https: full Tailscale Serve URL to use instead of the plain http Tailscale link
+  { group: "My Apps", icon: "🕹️", name: "BernaCade",  desc: "BernaCade remote (Lenovo)",        machine: "lenovo",  port: 5050, path: "/",
+    https: "https://minipc-lenovo.tail818bb3.ts.net/" }, // Tailscale Serve (real cert, installable as an app)
   { group: "My Apps", icon: "🧊", name: "BernaForge 3D", desc: "3D Forge & Blueprint AI (Lenovo)", machine: "lenovo",  port: 5080, path: "/" },
   { group: "My Apps", icon: "🏋️", name: "Apollo OS",  desc: "Garage fitness terminal (Lenovo)",  machine: "lenovo",  port: 5000, path: "/" },
   { group: "My Apps", icon: "🏋️", name: "Apollo OS (Beelink)", desc: "Garage fitness terminal (Beelink)", machine: "beelink", port: 5000, path: "/" },
@@ -95,7 +97,7 @@ function url(host, a) {
 function links(a) {
   const m = a.machine && MACHINES[a.machine];
   const lan = url(m ? m.lan : a.lan, a);
-  const ts = m ? url(m.ts, a) : null;
+  const ts = a.https || (m ? url(m.ts, a) : null);
   return { lan, ts };
 }
 
@@ -125,7 +127,7 @@ function render() {
       card.querySelector(".icon").textContent = a.icon;
       card.querySelector(".name").textContent = a.name;
       card.querySelector(".desc").textContent = a.desc + (ts ? "" : " · home Wi-Fi only");
-      card.querySelector(".addr").textContent = primary.replace(/^http:\/\//, "").replace(/\/$/, "");
+      card.querySelector(".addr").textContent = primary.replace(/^https?:\/\//, "").replace(/\/$/, "");
       if (other) {
         const alt = document.createElement("div"); alt.className = "alt";
         const l = document.createElement("a"); l.href = other;
