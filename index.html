@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>Home Hub</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Home Hub">
 <style>
   :root {
     --bg: #0f1115; --card: #181b22; --card-hover: #1f232c; --border: #2a2f3a;
@@ -127,7 +132,8 @@ function render() {
       card.querySelector(".icon").textContent = a.icon;
       card.querySelector(".name").textContent = a.name;
       card.querySelector(".desc").textContent = a.desc + (ts ? "" : " · home Wi-Fi only");
-      card.querySelector(".addr").textContent = primary.replace(/^https?:\/\//, "").replace(/\/$/, "");
+      card.querySelector(".addr").textContent = "Open here →";
+      card.title = primary; // full address still shows on hover / long-press
       if (other) {
         const alt = document.createElement("div"); alt.className = "alt";
         const l = document.createElement("a"); l.href = other;
@@ -153,6 +159,8 @@ document.querySelectorAll(".toggle button").forEach(b => b.addEventListener("cli
   mode = b.dataset.mode; store.set("hub-mode", mode); render();
 }));
 render();
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 </script>
 </body>
 </html>
